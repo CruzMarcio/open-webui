@@ -397,7 +397,8 @@
 						items={[
 							{ value: 'pipe', label: $i18n.t('Pipe') },
 							{ value: 'filter', label: $i18n.t('Filter') },
-							{ value: 'action', label: $i18n.t('Action') }
+							{ value: 'action', label: $i18n.t('Action') },
+							{ value: 'knowledge', label: $i18n.t('Knowledge') }
 						]}
 					/>
 				</div>

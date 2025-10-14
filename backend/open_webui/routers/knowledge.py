@@ -1,8 +1,11 @@
+import asyncio
 from typing import List, Optional
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Query
 import logging
 
+from open_webui.functions import get_function_module_by_id
+from open_webui.models.functions import Functions
 from open_webui.models.knowledge import (
     Knowledges,
     KnowledgeForm,
@@ -40,7 +43,7 @@ router = APIRouter()
 
 
 @router.get("/", response_model=list[KnowledgeUserResponse])
-async def get_knowledge(user=Depends(get_verified_user)):
+async def get_knowledge(request: Request, user=Depends(get_verified_user)):
     knowledge_bases = []
 
     if user.role == "admin" and BYPASS_ADMIN_ACCESS_CONTROL:
@@ -83,6 +86,30 @@ async def get_knowledge(user=Depends(get_verified_user)):
                 files=files,
             )
         )
+
+    knowledge_functions = Functions.get_functions_by_type("knowledge", active_only=True)
+
+    for knowledge_function in knowledge_functions:
+        try:
+            knowledge_function_module = get_function_module_by_id(
+                request, knowledge_function.id
+            )
+            try:
+                if asyncio.iscoroutinefunction(
+                    knowledge_function_module.get_knowledge_bases
+                ):
+                    knowledge_response = (
+                        await knowledge_function_module.get_knowledge_bases()
+                    )
+                else:
+                    knowledge_response = knowledge_function_module.get_knowledge_bases()
+                if knowledge_response:
+                    knowledge_with_files.append(knowledge_response)
+            except Exception as e:
+                log.exception(e)
+        except Exception as e:
+            log.error(f"Error loading function {knowledge_function.id}: {str(e)}")
+            continue
 
     return knowledge_with_files
 
